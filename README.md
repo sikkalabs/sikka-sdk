@@ -4,8 +4,10 @@ A lightweight, browser-compatible JavaScript SDK for interacting with the Sikka 
 
 ## Installation
 
+To install the SDK directly from GitHub, run:
+
 ```bash
-npm install sikka-sdk
+npm install sikkalabs/sikka-sdk
 ```
 
 ## Usage
