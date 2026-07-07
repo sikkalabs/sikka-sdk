@@ -2,8 +2,8 @@ export const NODE_HTTP_TIMEOUT = 10000;
 export const NODE_MAX_ATTEMPTS = 3;
 export const NODE_RETRY_DELAY = 500;
 
-export async function doNodeRequest(method, url, body) {
-  let lastErr;
+export async function fetchFromNode(method, url, bodyContent) {
+  let lastError;
   for (let attempt = 1; attempt <= NODE_MAX_ATTEMPTS; attempt++) {
     try {
       const controller = new AbortController();
@@ -11,29 +11,29 @@ export async function doNodeRequest(method, url, body) {
       
       const options = {
         method,
-        headers: body ? { 'Content-Type': 'application/json' } : {},
-        body: body ? JSON.stringify(body) : undefined,
+        headers: bodyContent ? { 'Content-Type': 'application/json' } : {},
+        body: bodyContent ? JSON.stringify(bodyContent) : undefined,
         signal: controller.signal
       };
 
-      const resp = await fetch(url, options);
+      const response = await fetch(url, options);
       clearTimeout(timeoutId);
 
-      if (resp.status < 500 || attempt === NODE_MAX_ATTEMPTS) {
-        return resp;
+      if (response.status < 500 || attempt === NODE_MAX_ATTEMPTS) {
+        return response;
       }
       
-      lastErr = new Error(`status ${resp.status}`);
-      await resp.arrayBuffer(); // drain body
+      lastError = new Error(`Node returned status ${response.status}`);
+      await response.arrayBuffer(); // drain body
     } catch (err) {
-      lastErr = err;
+      lastError = err;
     }
     
     if (attempt < NODE_MAX_ATTEMPTS) {
-      await new Promise(r => setTimeout(r, attempt * NODE_RETRY_DELAY));
+      await new Promise(resolve => setTimeout(resolve, attempt * NODE_RETRY_DELAY));
     }
   }
-  throw new Error(`${method} ${url} failed after ${NODE_MAX_ATTEMPTS} attempts: ${lastErr}`);
+  throw new Error(`${method} ${url} failed after ${NODE_MAX_ATTEMPTS} attempts: ${lastError.message || lastError}`);
 }
 
 export class APIClient {
@@ -43,34 +43,38 @@ export class APIClient {
 
   async getAddressInfo(address) {
     const url = `${this.nodeURL}/v1/address/${address}?limit=500`;
-    const resp = await doNodeRequest('GET', url);
-    if (resp.status !== 200) {
-      const text = await resp.text();
-      throw new Error(`GET address ${resp.status}: ${text}`);
+    const response = await fetchFromNode('GET', url);
+    if (response.status !== 200) {
+      const errorMessage = await response.text();
+      throw new Error(`Failed to get address info (${response.status}): ${errorMessage}`);
     }
-    const env = await resp.json();
-    const info = {
-      address: env.meta.address,
-      balance: env.meta.balance,
-      utxo_count: env.meta.utxo_count,
-      utxos: env.items || []
+    
+    const responseEnvelope = await response.json();
+    const addressInfo = {
+      address: responseEnvelope.meta.address,
+      balance: responseEnvelope.meta.balance,
+      utxo_count: responseEnvelope.meta.utxo_count,
+      unspentOutputs: responseEnvelope.items || []
     };
-    if (info.address && info.address !== address) {
-      throw new Error(`address response mismatch`);
+    
+    if (addressInfo.address && addressInfo.address !== address) {
+      throw new Error(`Address response mismatch. Expected ${address}, got ${addressInfo.address}`);
     }
-    return info;
+    
+    return addressInfo;
   }
 
   async getNodeStatus() {
     const url = `${this.nodeURL}/v1/status`;
-    const resp = await doNodeRequest('GET', url);
-    if (resp.status !== 200) {
-      const text = await resp.text();
-      throw new Error(`GET status ${resp.status}: ${text}`);
+    const response = await fetchFromNode('GET', url);
+    if (response.status !== 200) {
+      const errorMessage = await response.text();
+      throw new Error(`Failed to get node status (${response.status}): ${errorMessage}`);
     }
-    const status = await resp.json();
+    
+    const status = await response.json();
     if (!status.tips || status.tips.length < 1) {
-      throw new Error("node status returned no tips");
+      throw new Error("Node status returned no tips (empty DAG)");
     }
     
     let dagSize = 0;
@@ -87,40 +91,47 @@ export class APIClient {
     return status;
   }
 
-  async getTips() {
+  async getLatestTransactionTips() {
     const status = await this.getNodeStatus();
     if (status.tips.length === 1) {
+      // Sikka requires exactly 2 parents for a new transaction. 
+      // If there's only 1 tip, duplicate it.
       return [status.tips[0], status.tips[0]];
     }
     return status.tips.slice(0, 2);
   }
 
-  async getPowQuote(tx) {
+  async getProofOfWorkQuote(transaction) {
     const url = `${this.nodeURL}/v1/tx/pow-quote`;
-    const reqBody = { parents: tx.parents, timestamp: tx.timestamp };
-    const resp = await doNodeRequest('POST', url, reqBody);
-    if (resp.status !== 200) {
-      const text = await resp.text();
-      throw new Error(`pow quote ${resp.status}: ${text}`);
+    const requestBody = { parents: transaction.parents, timestamp: transaction.timestamp };
+    
+    const response = await fetchFromNode('POST', url, requestBody);
+    if (response.status !== 200) {
+      const errorMessage = await response.text();
+      throw new Error(`Failed to get PoW quote (${response.status}): ${errorMessage}`);
     }
-    const quote = await resp.json();
+    
+    const quote = await response.json();
     if (quote.required_bits < 0) {
-      throw new Error(`invalid pow quote: required_bits=${quote.required_bits}`);
+      throw new Error(`Invalid PoW quote from node: required_bits=${quote.required_bits}`);
     }
     if (!quote.parent_pow_hashes || quote.parent_pow_hashes.length !== 2) {
-      throw new Error("pow quote missing or invalid parent_pow_hashes");
+      throw new Error("PoW quote missing or invalid parent_pow_hashes");
     }
+    
     return quote;
   }
 
-  async submitTx(tx) {
+  async submitTransaction(transaction) {
     const url = `${this.nodeURL}/v1/tx/submit`;
-    const resp = await doNodeRequest('POST', url, tx);
-    const text = await resp.text();
-    if (resp.status !== 200) {
-      throw new Error(`submit tx ${resp.status}: ${text}`);
+    const response = await fetchFromNode('POST', url, transaction);
+    const textResponse = await response.text();
+    
+    if (response.status !== 200) {
+      throw new Error(`Failed to submit transaction (${response.status}): ${textResponse}`);
     }
-    const sr = JSON.parse(text);
-    return sr.txid;
+    
+    const parsedResponse = JSON.parse(textResponse);
+    return parsedResponse.txid;
   }
 }

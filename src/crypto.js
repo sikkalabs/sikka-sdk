@@ -8,20 +8,21 @@ const ADDRESS_VERSION = 1;
 const ADDRESS_HRP = "sikka";
 
 export async function createWallet(seedHex) {
-  let raw;
+  let seedBytes;
+  
   if (seedHex) {
-    raw = hexToBytes(seedHex.trim());
-    if (raw.length !== 32) {
-      throw new Error(`Expected 32-byte seed (64 hex chars), got ${raw.length} bytes`);
+    seedBytes = hexToBytes(seedHex.trim());
+    if (seedBytes.length !== 32) {
+      throw new Error(`Expected 32-byte seed (64 hex chars), got ${seedBytes.length} bytes`);
     }
   } else {
-    raw = new Uint8Array(32);
-    crypto.getRandomValues(raw);
+    seedBytes = new Uint8Array(32);
+    crypto.getRandomValues(seedBytes);
   }
 
   const privateKey = await mldsa.importKey(
     "raw-seed",
-    raw,
+    seedBytes,
     { name: "ML-DSA-87" },
     false,
     ["sign"]
@@ -40,8 +41,8 @@ export async function createWallet(seedHex) {
 
   // We return the privateKey handle, the hex, pubkey hex, and address.
   // Note: the private key export format depends on mldsa-wasm. 
-  // We'll just return the seed as privkey hex since that's enough to recreate it.
-  const privKeyHex = bytesToHex(raw);
+  // We'll just return the seed as privKeyHex since that's enough to recreate it.
+  const privKeyHex = bytesToHex(seedBytes);
 
   return { privateKey, privKeyHex, pubKeyHex, address };
 }
@@ -52,73 +53,73 @@ export async function createBrainWallet(passphrase) {
   return await createWallet(seedHex);
 }
 
-export function computeTxIDRaw(tx) {
-  const bufs = [];
-  bufs.push(new Uint8Array([0x02])); // tx version
+export function computeTransactionIdBytes(transaction) {
+  const buffers = [];
+  buffers.push(new Uint8Array([0x02])); // transaction version
 
   const numParents = new Uint8Array(4);
-  new DataView(numParents.buffer).setUint32(0, tx.parents.length, false);
-  bufs.push(numParents);
-  for (const p of tx.parents) {
-    bufs.push(hexToBytes(p));
+  new DataView(numParents.buffer).setUint32(0, transaction.parents.length, false);
+  buffers.push(numParents);
+  for (const parent of transaction.parents) {
+    buffers.push(hexToBytes(parent));
   }
 
   const numInputs = new Uint8Array(4);
-  new DataView(numInputs.buffer).setUint32(0, tx.inputs.length, false);
-  bufs.push(numInputs);
-  for (const input of tx.inputs) {
-    bufs.push(hexToBytes(input.txid));
-    const idxBuf = new Uint8Array(4);
-    new DataView(idxBuf.buffer).setUint32(0, input.index, false);
-    bufs.push(idxBuf);
+  new DataView(numInputs.buffer).setUint32(0, transaction.inputs.length, false);
+  buffers.push(numInputs);
+  for (const input of transaction.inputs) {
+    buffers.push(hexToBytes(input.txid));
+    const indexBuf = new Uint8Array(4);
+    new DataView(indexBuf.buffer).setUint32(0, input.index, false);
+    buffers.push(indexBuf);
   }
 
   const numOutputs = new Uint8Array(4);
-  new DataView(numOutputs.buffer).setUint32(0, tx.outputs.length, false);
-  bufs.push(numOutputs);
-  for (const output of tx.outputs) {
-    const addrBuf = stringToBytes(output.address);
-    const addrLenBuf = new Uint8Array(2);
-    new DataView(addrLenBuf.buffer).setUint16(0, addrBuf.length, false);
-    bufs.push(addrLenBuf);
-    bufs.push(addrBuf);
+  new DataView(numOutputs.buffer).setUint32(0, transaction.outputs.length, false);
+  buffers.push(numOutputs);
+  for (const output of transaction.outputs) {
+    const addressBytes = stringToBytes(output.address);
+    const addressLenBuf = new Uint8Array(2);
+    new DataView(addressLenBuf.buffer).setUint16(0, addressBytes.length, false);
+    buffers.push(addressLenBuf);
+    buffers.push(addressBytes);
 
-    const valBuf = new Uint8Array(8);
-    new DataView(valBuf.buffer).setBigUint64(0, BigInt(output.value), false);
-    bufs.push(valBuf);
+    const valueBuf = new Uint8Array(8);
+    new DataView(valueBuf.buffer).setBigUint64(0, BigInt(output.value), false);
+    buffers.push(valueBuf);
   }
 
-  const tsBuf = new Uint8Array(8);
-  new DataView(tsBuf.buffer).setBigUint64(0, BigInt(tx.timestamp), false);
-  bufs.push(tsBuf);
+  const timestampBuf = new Uint8Array(8);
+  new DataView(timestampBuf.buffer).setBigUint64(0, BigInt(transaction.timestamp), false);
+  buffers.push(timestampBuf);
 
-  const serialized = concatBytes(...bufs);
-  return sha3_256(serialized);
+  const serializedData = concatBytes(...buffers);
+  return sha3_256(serializedData);
 }
 
-export function txPowHash(tx) {
-  const txIDBytes = computeTxIDRaw(tx);
+export function calculateProofOfWorkHash(transaction) {
+  const transactionIdBytes = computeTransactionIdBytes(transaction);
 
-  let p0 = new Uint8Array(32);
-  let p1 = new Uint8Array(32);
+  let parentPowHash0 = new Uint8Array(32);
+  let parentPowHash1 = new Uint8Array(32);
 
-  if (tx.parent_pow_hashes && tx.parent_pow_hashes.length >= 1) {
-    p0 = hexToBytes(tx.parent_pow_hashes[0]);
+  if (transaction.parent_pow_hashes && transaction.parent_pow_hashes.length >= 1) {
+    parentPowHash0 = hexToBytes(transaction.parent_pow_hashes[0]);
   }
-  if (tx.parent_pow_hashes && tx.parent_pow_hashes.length >= 2) {
-    p1 = hexToBytes(tx.parent_pow_hashes[1]);
+  if (transaction.parent_pow_hashes && transaction.parent_pow_hashes.length >= 2) {
+    parentPowHash1 = hexToBytes(transaction.parent_pow_hashes[1]);
   }
 
   const nonceBuf = new Uint8Array(8);
-  new DataView(nonceBuf.buffer).setBigUint64(0, BigInt(tx.pow_nonce), false);
+  new DataView(nonceBuf.buffer).setBigUint64(0, BigInt(transaction.pow_nonce), false);
 
-  const buf = concatBytes(txIDBytes, p0, p1, nonceBuf);
-  return sha3_256(buf);
+  const dataToHash = concatBytes(transactionIdBytes, parentPowHash0, parentPowHash1, nonceBuf);
+  return sha3_256(dataToHash);
 }
 
-export function leadingZeroBits(buf) {
+export function countLeadingZeroBits(buffer) {
   let count = 0;
-  for (const byte of buf) {
+  for (const byte of buffer) {
     if (byte === 0) {
       count += 8;
       continue;
@@ -134,51 +135,52 @@ export function leadingZeroBits(buf) {
   return count;
 }
 
-export async function minePoW(tx, minBits) {
+export async function mineProofOfWork(transaction, minimumBits) {
   for (let nonce = 0n; ; nonce++) {
-    tx.pow_nonce = Number(nonce);
-    const hash = txPowHash(tx);
-    const bits = leadingZeroBits(hash);
-    if (bits >= minBits) {
-      tx.pow_bits = bits;
+    transaction.pow_nonce = Number(nonce);
+    const hash = calculateProofOfWorkHash(transaction);
+    const leadingBits = countLeadingZeroBits(hash);
+    
+    if (leadingBits >= minimumBits) {
+      transaction.pow_bits = leadingBits;
       return;
     }
   }
 }
 
-export function signingPayload(tx, inputIndex, utxo) {
-  const txID = computeTxIDRaw(tx);
-  const addrBytes = stringToBytes(utxo.address);
-  const spentTxID = hexToBytes(utxo.txid);
+export function generateSigningPayload(transaction, inputIndex, unspentOutput) {
+  const transactionIdBytes = computeTransactionIdBytes(transaction);
+  const addressBytes = stringToBytes(unspentOutput.address);
+  const spentTransactionId = hexToBytes(unspentOutput.txid);
 
-  const bufs = [];
-  bufs.push(stringToBytes(SIGNING_DOMAIN));
-  bufs.push(txID);
+  const buffers = [];
+  buffers.push(stringToBytes(SIGNING_DOMAIN));
+  buffers.push(transactionIdBytes);
 
-  const inIdxBuf = new Uint8Array(8);
-  new DataView(inIdxBuf.buffer).setBigUint64(0, BigInt(inputIndex), false);
-  bufs.push(inIdxBuf);
+  const inputIndexBuf = new Uint8Array(8);
+  new DataView(inputIndexBuf.buffer).setBigUint64(0, BigInt(inputIndex), false);
+  buffers.push(inputIndexBuf);
 
-  bufs.push(spentTxID);
+  buffers.push(spentTransactionId);
 
-  const utxoIdxBuf = new Uint8Array(8);
-  new DataView(utxoIdxBuf.buffer).setBigUint64(0, BigInt(utxo.index), false);
-  bufs.push(utxoIdxBuf);
+  const utxoIndexBuf = new Uint8Array(8);
+  new DataView(utxoIndexBuf.buffer).setBigUint64(0, BigInt(unspentOutput.index), false);
+  buffers.push(utxoIndexBuf);
 
-  const valBuf = new Uint8Array(8);
-  new DataView(valBuf.buffer).setBigUint64(0, BigInt(utxo.value), false);
-  bufs.push(valBuf);
+  const valueBuf = new Uint8Array(8);
+  new DataView(valueBuf.buffer).setBigUint64(0, BigInt(unspentOutput.value), false);
+  buffers.push(valueBuf);
 
-  const addrLenBuf = new Uint8Array(2);
-  new DataView(addrLenBuf.buffer).setUint16(0, addrBytes.length, false);
-  bufs.push(addrLenBuf);
+  const addressLenBuf = new Uint8Array(2);
+  new DataView(addressLenBuf.buffer).setUint16(0, addressBytes.length, false);
+  buffers.push(addressLenBuf);
 
-  bufs.push(addrBytes);
+  buffers.push(addressBytes);
 
-  return concatBytes(...bufs);
+  return concatBytes(...buffers);
 }
 
-export async function signInput(privateKey, payload) {
-  const signatureBytes = new Uint8Array(await mldsa.sign({ name: "ML-DSA-87" }, privateKey, payload));
+export async function signTransactionInput(privateKey, payloadToSign) {
+  const signatureBytes = new Uint8Array(await mldsa.sign({ name: "ML-DSA-87" }, privateKey, payloadToSign));
   return bytesToHex(signatureBytes);
 }
