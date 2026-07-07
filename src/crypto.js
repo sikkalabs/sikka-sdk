@@ -1,4 +1,4 @@
-import { sha3_256 } from '@noble/hashes/sha3';
+import { sha3_256 } from '@noble/hashes/sha3.js';
 import { encodeBech32m } from './bech32m.js';
 import mldsa from 'mldsa-wasm';
 import { hexToBytes, bytesToHex, stringToBytes, concatBytes } from './utils.js';
