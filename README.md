@@ -12,18 +12,22 @@ npm install sikka-sdk
 
 ### 1. Create a Wallet
 
-You can create a new wallet, or restore an existing one from a 32-byte hex seed.
+You can create a new wallet, restore an existing one from a 32-byte hex seed, or create a brain wallet from any arbitrary string (like `username:nonce`).
 
 ```javascript
-import { createWallet, SikkaClient } from 'sikka-sdk';
+import { createWallet, createBrainWallet, SikkaClient } from 'sikka-sdk';
 
-// Create a new wallet
+// Create a new random wallet
 const wallet = await createWallet();
 console.log("Address:", wallet.address);
 console.log("Private Key:", wallet.privKeyHex);
 
-// Restore an existing wallet
+// Restore an existing wallet from a 32-byte (64 character) hex seed
 const restoredWallet = await createWallet("YOUR_32_BYTE_HEX_SEED_HERE");
+
+// Create a brain wallet deterministically from ANY string
+const brainWallet = await createBrainWallet("user123:nonce1"); 
+console.log("Brain Wallet Address:", brainWallet.address);
 ```
 
 ### 2. Initialize the Client

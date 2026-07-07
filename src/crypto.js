@@ -46,6 +46,12 @@ export async function createWallet(seedHex) {
   return { privateKey, privKeyHex, pubKeyHex, address };
 }
 
+export async function createBrainWallet(passphrase) {
+  const hash = sha3_256(stringToBytes(passphrase));
+  const seedHex = bytesToHex(hash);
+  return await createWallet(seedHex);
+}
+
 export function computeTxIDRaw(tx) {
   const bufs = [];
   bufs.push(new Uint8Array([0x02])); // tx version

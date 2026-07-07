@@ -1,9 +1,13 @@
 import { APIClient } from './api.js';
-import { createWallet as cryptoCreateWallet, computeTxIDRaw, txPowHash, minePoW, signingPayload, signInput } from './crypto.js';
+import { createWallet as cryptoCreateWallet, createBrainWallet as cryptoCreateBrainWallet, computeTxIDRaw, txPowHash, minePoW, signingPayload, signInput } from './crypto.js';
 import { validateAddress } from './bech32m.js';
 
 export async function createWallet(seedHex) {
   return await cryptoCreateWallet(seedHex);
+}
+
+export async function createBrainWallet(passphrase) {
+  return await cryptoCreateBrainWallet(passphrase);
 }
 
 export class SikkaClient {
