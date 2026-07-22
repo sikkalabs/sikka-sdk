@@ -13,7 +13,7 @@ import {
 } from './crypto.js';
 import { generateMnemonic, validateMnemonic, normalizeMnemonic } from './bip39.js';
 import { validateAddress } from './bech32m.js';
-import { SikkaHDWallet, createHDWallet, MIN_UTXO_MATURITY_SECONDS, MAX_TX_INPUTS, MAX_TX_OUTPUTS } from './hdwallet.js';
+import { SikkaHDWallet, createHDWallet, hdWallet, MIN_UTXO_MATURITY_SECONDS, MAX_TX_INPUTS, MAX_TX_OUTPUTS } from './hdwallet.js';
 import { 
   sikkaToChillar, 
   chillarToSikka, 
@@ -32,6 +32,7 @@ export {
   validateAddress, 
   SikkaHDWallet, 
   createHDWallet,
+  hdWallet,
   MIN_UTXO_MATURITY_SECONDS,
   MAX_TX_INPUTS,
   MAX_TX_OUTPUTS,
@@ -44,6 +45,11 @@ export {
   CHILLAR_PER_SIKKA,
   SIKKA_DECIMALS
 };
+
+// Intuitive Shorthand Aliases
+export const newMnemonic = generateMnemonic;
+export const isValidMnemonic = validateMnemonic;
+export const isValidAddress = validateAddress;
 
 export async function createWallet(seedHex) {
   return await cryptoCreateWallet(seedHex);
@@ -69,6 +75,12 @@ export function derivePathSeed(masterSeed, account = 0, branch = 0, index = 0) {
   return cryptoDerivePathSeed(masterSeed, account, branch, index);
 }
 
+export const wallet = createWallet;
+export const brainWallet = createBrainWallet;
+export const walletFromMnemonic = createWalletFromMnemonic;
+export const walletFromPath = createWalletFromPath;
+export const fromMnemonic = createWalletFromMnemonic;
+export const fromPath = createWalletFromPath;
 
 export class SikkaClient {
   constructor({ nodeURL = 'https://1.sikkalabs.com', wallet } = {}) {

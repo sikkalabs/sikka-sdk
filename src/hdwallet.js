@@ -75,6 +75,15 @@ export class SikkaHDWallet {
     return wallet.address;
   }
 
+  // Shorthand aliases
+  async receiveAddress(index = 0) {
+    return await this.getReceiveAddress(index);
+  }
+
+  async changeAddress(index = 0) {
+    return await this.getChangeAddress(index);
+  }
+
   async scanAddresses() {
     const allUtxos = [];
     const usedAddresses = [];
@@ -182,6 +191,19 @@ export class SikkaHDWallet {
   async getUsedAddresses() {
     const scan = await this.scanAddresses();
     return scan.usedAddresses;
+  }
+
+  // Shorthand aliases
+  async newAddress() {
+    return await this.getNewUnusedAddress();
+  }
+
+  async unusedAddress() {
+    return await this.getNewUnusedAddress();
+  }
+
+  async usedAddresses() {
+    return await this.getUsedAddresses();
   }
 
   async balance() {
@@ -292,3 +314,5 @@ export async function createHDWallet(options = {}) {
   const wallet = new SikkaHDWallet(options);
   return wallet;
 }
+
+export const hdWallet = createHDWallet;

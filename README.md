@@ -206,21 +206,20 @@ self.onmessage = async (e) => {
 
 ## 🛠️ API Reference
 
-### Core Functions
+### Core Functions & Shorthand Aliases
 
-| Exported Function | Return Type | Description |
-| :--- | :--- | :--- |
-| `generateMnemonic(entropyBits)` | `string` | Generates 12–24 word BIP-39 mnemonic (128, 160, 192, 224, 256 bits). Default `256`. |
-| `validateMnemonic(mnemonic)` | `boolean` | Checks word count, wordlist presence, and SHA-256 entropy checksum. |
-| `createWalletFromMnemonic(mnemonic, passphrase)` | `Promise<Wallet>` | Derives a full ML-DSA-87 wallet from a 24-word seed phrase. |
-| `createWalletFromPath(masterSeed, account, branch, index)` | `Promise<Wallet>` | Derives an HD child wallet for specified path indices. |
-| `seedFromMnemonic(mnemonic, passphrase)` | `Uint8Array` | Derives 32-byte ML-DSA-87 master seed using HKDF-SHA3-256. |
-| `derivePathSeed(masterSeed, account, branch, index)` | `Uint8Array` | Derives 32-byte child seed for HD path. |
-| `createWallet(seedHex?)` | `Promise<Wallet>` | Creates a wallet from a 32-byte hex seed or random entropy. |
-| `createBrainWallet(passphrase)` | `Promise<Wallet>` | Creates a wallet deterministically from any string. |
-| `sikkaToChillar(sikka)` | `bigint` | Converts Sikka amount (string/number) to chillar (`1 Sikka = 1,000,000 chillar`). |
-| `chillarToSikka(chillar, format?)` | `string \| number` | Converts chillar amount (bigint/string) to Sikka formatted string or float number. |
-| `validateAddress(address)` | `string` | Validates a `sikka1...` Bech32m address string. |
+| Function / Shorthand | Alternative Name | Return Type | Description |
+| :--- | :--- | :--- | :--- |
+| `createHDWallet(options)` | `hdWallet(options)` | `Promise<SikkaHDWallet>` | Creates an all-in-one smart HD wallet. |
+| `generateMnemonic(bits)` | `newMnemonic(bits)` | `string` | Generates 12–24 word BIP-39 mnemonic (default `256`). |
+| `validateMnemonic(mnemonic)` | `isValidMnemonic(mnemonic)` | `boolean` | Checks word count, wordlist, and SHA-256 checksum. |
+| `createWalletFromMnemonic()` | `fromMnemonic()` / `walletFromMnemonic()` | `Promise<Wallet>` | Derives ML-DSA-87 wallet from a 24-word seed phrase. |
+| `createWalletFromPath()` | `fromPath()` / `walletFromPath()` | `Promise<Wallet>` | Derives HD child wallet for specified path. |
+| `createWallet(seedHex?)` | `wallet(seedHex?)` | `Promise<Wallet>` | Creates a wallet from a 32-byte hex seed or random entropy. |
+| `createBrainWallet(passphrase)` | `brainWallet(passphrase)` | `Promise<Wallet>` | Creates a wallet deterministically from any string. |
+| `sikkaToChillar(sikka)` | `toChillar(sikka)` / `fromSikka(sikka)` | `bigint` | Converts Sikka amount to chillar (`1 Sikka = 10,000,000,000 chillar`). |
+| `chillarToSikka(chillar)` | `toSikka(chillar)` / `fromChillar(chillar)` | `string \| number` | Converts chillar amount to Sikka formatted string or float. |
+| `validateAddress(address)` | `isValidAddress(address)` | `string` | Validates a `sikka1...` Bech32m address string. |
 
 ### `SikkaClient` Class
 
