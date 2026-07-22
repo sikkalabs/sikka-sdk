@@ -32,17 +32,26 @@ npm install sikkalabs/sikka-sdk
 
 ## 🚀 Quick Start (In 4 Simple Steps)
 
-### Step 1: Create a 24-Word Seed Wallet
+### Step 1: Create an All-in-One HD Wallet
 ```javascript
-import { generateMnemonic, createWalletFromMnemonic } from 'sikka-sdk';
+import { createHDWallet } from 'sikka-sdk';
 
-// 1. Generate a new 24-word recovery phrase
-const mnemonic = generateMnemonic(256);
-console.log("Your 24-Word Seed Phrase:\n", mnemonic);
+// 1. Create HD wallet (Generates a 24-word seed phrase if none provided)
+const wallet = await createHDWallet({
+  mnemonic: "optional 24 word mnemonic...", 
+  passphrase: "optional-passphrase",
+  nodeURL: "https://1.sikkalabs.com"
+});
 
-// 2. Create your quantum-resistant wallet
-const wallet = await createWalletFromMnemonic(mnemonic);
-console.log("Your Sikka Address:", wallet.address);
+console.log("24-Word Seed Phrase:", wallet.mnemonic);
+
+// 2. Get receive addresses and check total balance across all HD addresses
+const receiveAddr = await wallet.getReceiveAddress();     // Default [0/0/0]
+const newAddr     = await wallet.getNewUnusedAddress();   // Next clean receive address
+const totalBal   = await wallet.balance();               // Aggregated balance across receive & change
+
+// 3. Send Sikka (Auto-selects UTXOs, routes change to fresh address, signs & mines PoW)
+const { txID, sentAmount, changeAddress } = await wallet.send(500000n, "sikka1...");
 ```
 
 ### Step 2: Initialize the Client

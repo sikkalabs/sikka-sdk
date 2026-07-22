@@ -4,8 +4,7 @@ import {
   createWalletFromMnemonic, 
   createWalletFromPath, 
   seedFromMnemonic,
-  createWallet,
-  createBrainWallet, 
+  createHDWallet,
   SikkaClient 
 } from './src/index.js';
 
@@ -86,16 +85,40 @@ async function runTests() {
   console.log("   HD Path Derivation: PASSED ✓");
 
   // ----------------------------------------------------
-  // 4. Live Network Integration Test (Optional)
+  // 4. SikkaHDWallet Manager Tests
   // ----------------------------------------------------
-  console.log("\n4. Initializing Network Integration Wallet...");
+  console.log("\n4. Testing SikkaHDWallet Smart Manager...");
+  const hdWallet = await createHDWallet({ mnemonic: vector1.mnemonic, gapLimit: 2 });
+  
+  const hdReceive0 = await hdWallet.getReceiveAddress(0);
+  const hdChange0  = await hdWallet.getChangeAddress(0);
+  const nextUnused = await hdWallet.getNewUnusedAddress();
+  const totalBal   = await hdWallet.balance();
+
+  console.log("   HD Wallet Primary Receive Address:", hdReceive0);
+  console.log("   HD Wallet Primary Change Address: ", hdChange0);
+  console.log("   HD Wallet Next Unused Address:   ", nextUnused);
+  console.log("   HD Wallet Total Balance:         ", totalBal.toString(), "chillar");
+
+  if (hdReceive0 !== receive0.address) {
+    throw new Error(`SikkaHDWallet Receive Address mismatch! Expected ${receive0.address}, got ${hdReceive0}`);
+  }
+  if (hdChange0 !== change0.address) {
+    throw new Error(`SikkaHDWallet Change Address mismatch! Expected ${change0.address}, got ${hdChange0}`);
+  }
+  console.log("   SikkaHDWallet Manager: PASSED ✓");
+
+  // ----------------------------------------------------
+  // 5. Live Network Integration Test (Optional)
+  // ----------------------------------------------------
+  console.log("\n5. Initializing Network Integration Wallet...");
   const wallet = await createWalletFromMnemonic(generatedMnemonic);
   console.log("   Active Wallet Address:", wallet.address);
   console.log("   Active Public Key:    ", wallet.pubKeyHex);
 
   const client = new SikkaClient({ wallet });
 
-  console.log("\n5. Checking balance...");
+  console.log("\n6. Checking balance...");
   let balance = 0;
   try {
     balance = await client.balance(wallet.address);
@@ -105,7 +128,7 @@ async function runTests() {
   }
 
   if (balance > 0) {
-    console.log("\n6. Funds detected! Sending funds back to self...");
+    console.log("\n7. Funds detected! Sending funds back to self...");
     try {
       console.log(`   Sending ${balance} chillar to ${wallet.address}...`);
       const result = await client.send(balance, wallet.address);

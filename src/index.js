@@ -13,8 +13,9 @@ import {
 } from './crypto.js';
 import { generateMnemonic, validateMnemonic, normalizeMnemonic } from './bip39.js';
 import { validateAddress } from './bech32m.js';
+import { SikkaHDWallet, createHDWallet } from './hdwallet.js';
 
-export { generateMnemonic, validateMnemonic, normalizeMnemonic, validateAddress };
+export { generateMnemonic, validateMnemonic, normalizeMnemonic, validateAddress, SikkaHDWallet, createHDWallet };
 
 export async function createWallet(seedHex) {
   return await cryptoCreateWallet(seedHex);
