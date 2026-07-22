@@ -349,6 +349,16 @@ export class SikkaHDWallet {
       changeAddress: changeWallet ? changeWallet.address : null
     };
   }
+
+  async history(limit = 50) {
+    const used = await this.getUsedAddresses();
+    const addresses = used.map(a => a.address);
+    if (addresses.length === 0) {
+      const primary = await this.getReceiveAddress(0);
+      addresses.push(primary);
+    }
+    return await this.api.getSyncTail(addresses, limit);
+  }
 }
 
 export async function createHDWallet(options = {}) {

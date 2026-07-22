@@ -26,6 +26,7 @@ import {
 } from './units.js';
 
 export { 
+  APIClient,
   generateMnemonic, 
   validateMnemonic, 
   normalizeMnemonic, 
@@ -99,6 +100,20 @@ export class SikkaClient {
 
   async pow(transaction, minimumBits) {
     return await mineProofOfWork(transaction, minimumBits);
+  }
+
+  async getTransaction(txid) {
+    return await this.api.getTransaction(txid);
+  }
+
+  async getTransactionWeight(txid) {
+    return await this.api.getTransactionWeight(txid);
+  }
+
+  async history(address, limit = 50) {
+    const targetAddress = address || (this.wallet && this.wallet.address);
+    const addresses = targetAddress ? [targetAddress] : [];
+    return await this.api.getSyncTail(addresses, limit);
   }
 
   async send(amount, recipientAddr) {
