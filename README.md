@@ -25,7 +25,11 @@ Provides full wallet management, 24-word BIP-39 mnemonic seed phrases, Hierarchi
 Install directly via `npm`, `yarn`, `pnpm`, or `bun`:
 
 ```bash
+# Install latest main branch:
 npm install sikkalabs/sikka-sdk
+
+# Install specific release tag / version:
+npm install sikkalabs/sikka-sdk#v0.0.1
 ```
 
 ---
