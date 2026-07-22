@@ -13,7 +13,7 @@ import {
 } from './crypto.js';
 import { generateMnemonic, validateMnemonic, normalizeMnemonic } from './bip39.js';
 import { validateAddress } from './bech32m.js';
-import { SikkaHDWallet, createHDWallet } from './hdwallet.js';
+import { SikkaHDWallet, createHDWallet, MIN_UTXO_MATURITY_SECONDS, MAX_TX_INPUTS, MAX_TX_OUTPUTS } from './hdwallet.js';
 import { 
   sikkaToChillar, 
   chillarToSikka, 
@@ -32,6 +32,9 @@ export {
   validateAddress, 
   SikkaHDWallet, 
   createHDWallet,
+  MIN_UTXO_MATURITY_SECONDS,
+  MAX_TX_INPUTS,
+  MAX_TX_OUTPUTS,
   sikkaToChillar,
   chillarToSikka,
   toChillar,

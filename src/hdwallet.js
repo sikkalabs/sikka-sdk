@@ -16,6 +16,10 @@ import {
 import { validateAddress } from './bech32m.js';
 import { bytesToHex } from './utils.js';
 
+export const MIN_UTXO_MATURITY_SECONDS = 600;
+export const MAX_TX_INPUTS = 64;
+export const MAX_TX_OUTPUTS = 256;
+
 export class SikkaHDWallet {
   constructor({ mnemonic, passphrase = "", nodeURL = 'https://1.sikkalabs.com', gapLimit = 10 } = {}) {
     if (mnemonic) {
@@ -35,8 +39,8 @@ export class SikkaHDWallet {
     this.masterSeed = seedFromMnemonic(this.mnemonic, this.passphrase);
     this.masterSeedHex = bytesToHex(this.masterSeed);
 
-    this.addressCache = new Map(); // address -> walletObj
-    this.pathCache = new Map();    // "account:branch:index" -> walletObj
+    this.addressCache = new Map();
+    this.pathCache = new Map();
   }
 
   async getWalletForPath(account = 0, branch = 0, index = 0) {
@@ -77,6 +81,8 @@ export class SikkaHDWallet {
     let nextReceiveIndex = 0;
     let nextChangeIndex = 0;
 
+    const now = Math.floor(Date.now() / 1000);
+
     // Scan Receive Addresses (Branch 0)
     let consecutiveUnusedReceive = 0;
     for (let index = 0; consecutiveUnusedReceive < this.gapLimit; index++) {
@@ -103,6 +109,9 @@ export class SikkaHDWallet {
 
         if (info.unspentOutputs) {
           for (const utxo of info.unspentOutputs) {
+            if (utxo.created_at && (now < Number(utxo.created_at) + MIN_UTXO_MATURITY_SECONDS)) {
+              continue; // Skip immature UTXO (< 10 min old)
+            }
             allUtxos.push({
               ...utxo,
               address: wallet.address,
@@ -141,6 +150,9 @@ export class SikkaHDWallet {
 
         if (info.unspentOutputs) {
           for (const utxo of info.unspentOutputs) {
+            if (utxo.created_at && (now < Number(utxo.created_at) + MIN_UTXO_MATURITY_SECONDS)) {
+              continue; // Skip immature UTXO (< 10 min old)
+            }
             allUtxos.push({
               ...utxo,
               address: wallet.address,
@@ -191,7 +203,7 @@ export class SikkaHDWallet {
 
     const scan = await this.scanAddresses();
     if (!scan.utxos || scan.utxos.length === 0) {
-      throw new Error("Insufficient balance across HD wallet (no unspent outputs found)");
+      throw new Error("Insufficient mature balance across HD wallet (no spendable outputs found)");
     }
 
     const selectedUtxos = [];
@@ -206,6 +218,10 @@ export class SikkaHDWallet {
       throw new Error(`Insufficient balance across HD wallet. Have ${inputTotal}, need ${amount}`);
     }
 
+    if (selectedUtxos.length > MAX_TX_INPUTS) {
+      throw new Error(`Transaction exceeds maximum inputs limit of ${MAX_TX_INPUTS} (selected ${selectedUtxos.length})`);
+    }
+
     const latestTips = await this.api.getLatestTransactionTips();
 
     const transactionOutputs = [{ address: recipientAddr, value: Number(amount) }];
@@ -218,6 +234,10 @@ export class SikkaHDWallet {
         address: changeWallet.address,
         value: Number(changeAmount)
       });
+    }
+
+    if (transactionOutputs.length > MAX_TX_OUTPUTS) {
+      throw new Error(`Transaction exceeds maximum outputs limit of ${MAX_TX_OUTPUTS}`);
     }
 
     const transactionInputs = selectedUtxos.map(utxo => ({
