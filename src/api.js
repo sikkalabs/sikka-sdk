@@ -24,7 +24,7 @@ export async function fetchFromNode(method, url, bodyContent) {
       }
       
       lastError = new Error(`Node returned status ${response.status}`);
-      await response.arrayBuffer(); // drain body
+      await response.arrayBuffer();
     } catch (err) {
       lastError = err;
     }
@@ -94,8 +94,6 @@ export class APIClient {
   async getLatestTransactionTips() {
     const status = await this.getNodeStatus();
     if (status.tips.length === 1) {
-      // Sikka requires exactly 2 parents for a new transaction. 
-      // If there's only 1 tip, duplicate it.
       return [status.tips[0], status.tips[0]];
     }
     return status.tips.slice(0, 2);
@@ -133,5 +131,49 @@ export class APIClient {
     
     const parsedResponse = JSON.parse(textResponse);
     return parsedResponse.txid;
+  }
+
+  async getTransaction(txid) {
+    const url = `${this.nodeURL}/v1/tx/${txid}`;
+    const response = await fetchFromNode('GET', url);
+    if (response.status !== 200) {
+      const errorMessage = await response.text();
+      throw new Error(`Failed to get transaction ${txid} (${response.status}): ${errorMessage}`);
+    }
+    return await response.json();
+  }
+
+  async getTransactionWeight(txid) {
+    const url = `${this.nodeURL}/v1/tx/${txid}/weight`;
+    const response = await fetchFromNode('GET', url);
+    if (response.status !== 200) {
+      const errorMessage = await response.text();
+      throw new Error(`Failed to get transaction weight ${txid} (${response.status}): ${errorMessage}`);
+    }
+    return await response.json();
+  }
+
+  async getTransactions(txids) {
+    const url = `${this.nodeURL}/v1/txs`;
+    const response = await fetchFromNode('POST', url, { txids });
+    if (response.status !== 200) {
+      const errorMessage = await response.text();
+      throw new Error(`Failed to batch fetch transactions (${response.status}): ${errorMessage}`);
+    }
+    return await response.json();
+  }
+
+  async getSyncTail(addresses = [], limit = 50) {
+    let url = `${this.nodeURL}/v1/sync/tail?limit=${limit}`;
+    if (addresses && addresses.length > 0) {
+      const addrs = Array.isArray(addresses) ? addresses.join(',') : String(addresses);
+      url += `&addresses=${encodeURIComponent(addrs)}`;
+    }
+    const response = await fetchFromNode('GET', url);
+    if (response.status !== 200) {
+      const errorMessage = await response.text();
+      throw new Error(`Failed to fetch sync tail (${response.status}): ${errorMessage}`);
+    }
+    return await response.json();
   }
 }
