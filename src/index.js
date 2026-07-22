@@ -14,8 +14,20 @@ import {
 import { generateMnemonic, validateMnemonic, normalizeMnemonic } from './bip39.js';
 import { validateAddress } from './bech32m.js';
 import { SikkaHDWallet, createHDWallet } from './hdwallet.js';
+import { sikkaToChillar, chillarToSikka, CHILLAR_PER_SIKKA, SIKKA_DECIMALS } from './units.js';
 
-export { generateMnemonic, validateMnemonic, normalizeMnemonic, validateAddress, SikkaHDWallet, createHDWallet };
+export { 
+  generateMnemonic, 
+  validateMnemonic, 
+  normalizeMnemonic, 
+  validateAddress, 
+  SikkaHDWallet, 
+  createHDWallet,
+  sikkaToChillar,
+  chillarToSikka,
+  CHILLAR_PER_SIKKA,
+  SIKKA_DECIMALS
+};
 
 export async function createWallet(seedHex) {
   return await cryptoCreateWallet(seedHex);

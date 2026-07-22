@@ -5,6 +5,9 @@ import {
   createWalletFromPath, 
   seedFromMnemonic,
   createHDWallet,
+  sikkaToChillar,
+  chillarToSikka,
+  CHILLAR_PER_SIKKA,
   SikkaClient 
 } from './src/index.js';
 
@@ -29,9 +32,27 @@ async function runTests() {
   if (!isValid) throw new Error("Generated mnemonic failed validation!");
 
   // ----------------------------------------------------
-  // 2. Golden Vector Verification (Sikka Go Node Spec)
+  // 2. Unit Conversion Tests (Sikka <-> Chillar)
   // ----------------------------------------------------
-  console.log("\n2. Testing Golden Vector Derivation (Matching Go Node)...");
+  console.log("\n2. Testing Unit Conversions (Sikka <-> Chillar)...");
+  if (sikkaToChillar("1") !== 1_000_000n) throw new Error("sikkaToChillar('1') failed");
+  if (sikkaToChillar("1.5") !== 1_500_000n) throw new Error("sikkaToChillar('1.5') failed");
+  if (sikkaToChillar("0.000001") !== 1n) throw new Error("sikkaToChillar('0.000001') failed");
+  
+  if (chillarToSikka(1_000_000n) !== "1") throw new Error("chillarToSikka(1000000n) failed");
+  if (chillarToSikka(1_500_000n) !== "1.5") throw new Error("chillarToSikka(1500000n) failed");
+  if (chillarToSikka(1n) !== "0.000001") throw new Error("chillarToSikka(1n) failed");
+  if (chillarToSikka(0n) !== "0") throw new Error("chillarToSikka(0n) failed");
+
+  console.log("   1 Sikka     = ", sikkaToChillar("1").toString(), "chillar");
+  console.log("   1.5 Sikka   = ", sikkaToChillar("1.5").toString(), "chillar");
+  console.log("   1 chillar   = ", chillarToSikka(1n), "Sikka");
+  console.log("   Unit Conversions: PASSED ✓");
+
+  // ----------------------------------------------------
+  // 3. Golden Vector Verification (Sikka Go Node Spec)
+  // ----------------------------------------------------
+  console.log("\n3. Testing Golden Vector Derivation (Matching Go Node)...");
   
   const vector1 = {
     mnemonic: "gloom ice air over evolve predict bicycle column route minor donor welcome elephant produce lounge boss skirt often snap neutral sick sauce kangaroo poet",
@@ -62,9 +83,9 @@ async function runTests() {
   console.log("   Vector 2: PASSED ✓");
 
   // ----------------------------------------------------
-  // 3. HD Child Path Derivation Tests
+  // 4. HD Child Path Derivation Tests
   // ----------------------------------------------------
-  console.log("\n3. Testing HD Child Path Derivation...");
+  console.log("\n4. Testing HD Child Path Derivation...");
   const masterSeed = seedFromMnemonic(vector1.mnemonic, "");
   
   // External branch (0), Index 0
@@ -85,9 +106,9 @@ async function runTests() {
   console.log("   HD Path Derivation: PASSED ✓");
 
   // ----------------------------------------------------
-  // 4. SikkaHDWallet Manager Tests
+  // 5. SikkaHDWallet Manager Tests
   // ----------------------------------------------------
-  console.log("\n4. Testing SikkaHDWallet Smart Manager...");
+  console.log("\n5. Testing SikkaHDWallet Smart Manager...");
   const hdWallet = await createHDWallet({ mnemonic: vector1.mnemonic, gapLimit: 2 });
   
   const hdReceive0 = await hdWallet.getReceiveAddress(0);
@@ -98,7 +119,7 @@ async function runTests() {
   console.log("   HD Wallet Primary Receive Address:", hdReceive0);
   console.log("   HD Wallet Primary Change Address: ", hdChange0);
   console.log("   HD Wallet Next Unused Address:   ", nextUnused);
-  console.log("   HD Wallet Total Balance:         ", totalBal.toString(), "chillar");
+  console.log("   HD Wallet Total Balance:         ", chillarToSikka(totalBal), "Sikka (", totalBal.toString(), "chillar)");
 
   if (hdReceive0 !== receive0.address) {
     throw new Error(`SikkaHDWallet Receive Address mismatch! Expected ${receive0.address}, got ${hdReceive0}`);
@@ -109,28 +130,28 @@ async function runTests() {
   console.log("   SikkaHDWallet Manager: PASSED ✓");
 
   // ----------------------------------------------------
-  // 5. Live Network Integration Test (Optional)
+  // 6. Live Network Integration Test (Optional)
   // ----------------------------------------------------
-  console.log("\n5. Initializing Network Integration Wallet...");
+  console.log("\n6. Initializing Network Integration Wallet...");
   const wallet = await createWalletFromMnemonic(generatedMnemonic);
   console.log("   Active Wallet Address:", wallet.address);
   console.log("   Active Public Key:    ", wallet.pubKeyHex);
 
   const client = new SikkaClient({ wallet });
 
-  console.log("\n6. Checking balance...");
+  console.log("\n7. Checking balance...");
   let balance = 0;
   try {
     balance = await client.balance(wallet.address);
-    console.log(`   Current balance: ${balance} chillar`);
+    console.log(`   Current balance: ${chillarToSikka(balance)} Sikka (${balance} chillar)`);
   } catch (err) {
     console.log("   Balance check notice:", err.message);
   }
 
   if (balance > 0) {
-    console.log("\n7. Funds detected! Sending funds back to self...");
+    console.log("\n8. Funds detected! Sending funds back to self...");
     try {
-      console.log(`   Sending ${balance} chillar to ${wallet.address}...`);
+      console.log(`   Sending ${chillarToSikka(balance)} Sikka (${balance} chillar) to ${wallet.address}...`);
       const result = await client.send(balance, wallet.address);
       console.log("   Transaction ID:", result.txID);
       console.log("   Sent Amount:   ", result.sentAmount.toString());

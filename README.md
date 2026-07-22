@@ -218,6 +218,8 @@ self.onmessage = async (e) => {
 | `derivePathSeed(masterSeed, account, branch, index)` | `Uint8Array` | Derives 32-byte child seed for HD path. |
 | `createWallet(seedHex?)` | `Promise<Wallet>` | Creates a wallet from a 32-byte hex seed or random entropy. |
 | `createBrainWallet(passphrase)` | `Promise<Wallet>` | Creates a wallet deterministically from any string. |
+| `sikkaToChillar(sikka)` | `bigint` | Converts Sikka amount (string/number) to chillar (`1 Sikka = 1,000,000 chillar`). |
+| `chillarToSikka(chillar, format?)` | `string \| number` | Converts chillar amount (bigint/string) to Sikka formatted string or float number. |
 | `validateAddress(address)` | `string` | Validates a `sikka1...` Bech32m address string. |
 
 ### `SikkaClient` Class
