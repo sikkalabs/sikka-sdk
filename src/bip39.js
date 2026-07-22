@@ -1,6 +1,6 @@
-import { sha256 } from '@noble/hashes/sha256.js';
-import { pbkdf2 } from '@noble/hashes/pbkdf2.js';
-import { sha512 } from '@noble/hashes/sha512.js';
+import { sha256 } from '@noble/hashes/sha256';
+import { pbkdf2 } from '@noble/hashes/pbkdf2';
+import { sha512 } from '@noble/hashes/sha512';
 import { stringToBytes, concatBytes } from './utils.js';
 
 export const WORDLIST = [

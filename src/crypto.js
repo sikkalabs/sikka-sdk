@@ -1,5 +1,5 @@
-import { sha3_256 } from '@noble/hashes/sha3.js';
-import { hkdf } from '@noble/hashes/hkdf.js';
+import { sha3_256 } from '@noble/hashes/sha3';
+import { hkdf } from '@noble/hashes/hkdf';
 import { encodeBech32m } from './bech32m.js';
 import mldsa from 'mldsa-wasm';
 import { hexToBytes, bytesToHex, stringToBytes, concatBytes } from './utils.js';
