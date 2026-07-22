@@ -14,7 +14,16 @@ import {
 import { generateMnemonic, validateMnemonic, normalizeMnemonic } from './bip39.js';
 import { validateAddress } from './bech32m.js';
 import { SikkaHDWallet, createHDWallet } from './hdwallet.js';
-import { sikkaToChillar, chillarToSikka, CHILLAR_PER_SIKKA, SIKKA_DECIMALS } from './units.js';
+import { 
+  sikkaToChillar, 
+  chillarToSikka, 
+  toChillar, 
+  toSikka, 
+  fromChillar, 
+  fromSikka, 
+  CHILLAR_PER_SIKKA, 
+  SIKKA_DECIMALS 
+} from './units.js';
 
 export { 
   generateMnemonic, 
@@ -25,6 +34,10 @@ export {
   createHDWallet,
   sikkaToChillar,
   chillarToSikka,
+  toChillar,
+  toSikka,
+  fromChillar,
+  fromSikka,
   CHILLAR_PER_SIKKA,
   SIKKA_DECIMALS
 };

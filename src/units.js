@@ -57,3 +57,8 @@ export function chillarToSikka(chillar, format = 'string') {
 
   return resStr;
 }
+
+export const toChillar = sikkaToChillar;
+export const toSikka = chillarToSikka;
+export const fromChillar = chillarToSikka;
+export const fromSikka = sikkaToChillar;
