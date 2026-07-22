@@ -1,13 +1,20 @@
 import { APIClient } from './api.js';
 import { 
   createWallet as cryptoCreateWallet, 
-  createBrainWallet as cryptoCreateBrainWallet, 
+  createBrainWallet as cryptoCreateBrainWallet,
+  createWalletFromMnemonic as cryptoCreateWalletFromMnemonic,
+  createWalletFromPath as cryptoCreateWalletFromPath,
+  seedFromMnemonic as cryptoSeedFromMnemonic,
+  derivePathSeed as cryptoDerivePathSeed,
   computeTransactionIdBytes, 
   mineProofOfWork, 
   generateSigningPayload, 
   signTransactionInput 
 } from './crypto.js';
+import { generateMnemonic, validateMnemonic, normalizeMnemonic } from './bip39.js';
 import { validateAddress } from './bech32m.js';
+
+export { generateMnemonic, validateMnemonic, normalizeMnemonic, validateAddress };
 
 export async function createWallet(seedHex) {
   return await cryptoCreateWallet(seedHex);
@@ -16,6 +23,23 @@ export async function createWallet(seedHex) {
 export async function createBrainWallet(passphrase) {
   return await cryptoCreateBrainWallet(passphrase);
 }
+
+export async function createWalletFromMnemonic(mnemonic, passphrase = "") {
+  return await cryptoCreateWalletFromMnemonic(mnemonic, passphrase);
+}
+
+export async function createWalletFromPath(masterSeed, account = 0, branch = 0, index = 0) {
+  return await cryptoCreateWalletFromPath(masterSeed, account, branch, index);
+}
+
+export function seedFromMnemonic(mnemonic, passphrase = "") {
+  return cryptoSeedFromMnemonic(mnemonic, passphrase);
+}
+
+export function derivePathSeed(masterSeed, account = 0, branch = 0, index = 0) {
+  return cryptoDerivePathSeed(masterSeed, account, branch, index);
+}
+
 
 export class SikkaClient {
   constructor({ nodeURL = 'https://1.sikkalabs.com', wallet } = {}) {

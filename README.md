@@ -1,6 +1,6 @@
 # Sikka JS SDK
 
-A lightweight, browser-compatible JavaScript SDK for interacting with the Sikka node, creating wallets, and sending transactions with built-in Proof-of-Work (PoW).
+A lightweight, browser-compatible JavaScript SDK for interacting with the Sikka node, creating wallets (BIP-39 mnemonics, HD child wallets, seed restoration, brain wallets), and sending transactions with built-in Proof-of-Work (PoW).
 
 ## Installation
 
@@ -12,24 +12,68 @@ npm install sikkalabs/sikka-sdk
 
 ## Usage
 
-### 1. Create a Wallet
+### 1. Create & Manage Wallets
 
-You can create a new wallet, restore an existing one from a 32-byte hex seed, or create a brain wallet from any arbitrary string (like `username:nonce`).
+The Sikka SDK supports full wallet management compatible with the Sikka Go node specification:
+
+#### A. Generate & Restore from 24-Word BIP-39 Seed Mnemonic
 
 ```javascript
-import { createWallet, createBrainWallet, SikkaClient } from 'sikka-sdk';
+import { 
+  generateMnemonic, 
+  validateMnemonic, 
+  createWalletFromMnemonic,
+  createWalletFromPath,
+  seedFromMnemonic,
+  createWallet, 
+  createBrainWallet, 
+  SikkaClient 
+} from 'sikka-sdk';
 
-// Create a new random wallet
-const wallet = await createWallet();
+// 1. Generate a new 24-word BIP-39 mnemonic (256 bits entropy)
+const mnemonic = generateMnemonic(256);
+console.log("Mnemonic:", mnemonic);
+
+// 2. Validate mnemonic
+if (validateMnemonic(mnemonic)) {
+  console.log("Mnemonic is valid!");
+}
+
+// 3. Create wallet from mnemonic (with optional passphrase)
+const wallet = await createWalletFromMnemonic(mnemonic, "optional-passphrase");
 console.log("Address:", wallet.address);
-console.log("Private Key:", wallet.privKeyHex);
+console.log("Public Key:", wallet.pubKeyHex);
+console.log("Private Key / Seed Hex:", wallet.privKeyHex);
+```
 
-// Restore an existing wallet from a 32-byte (64 character) hex seed
+#### B. Hierarchical Deterministic (HD) Child Wallets
+
+Derive deterministic child addresses following Sikka's HD derivation (`account / branch / index`):
+
+```javascript
+// 1. Derive master 32-byte ML-DSA-87 seed from mnemonic
+const masterSeed = seedFromMnemonic(mnemonic, "optional-passphrase");
+
+// 2. Derive HD child wallet for account 0, external branch (0), index 0
+const receiveWallet0 = await createWalletFromPath(masterSeed, 0, 0, 0);
+console.log("Receive Address 0:", receiveWallet0.address);
+
+// 3. Derive HD child wallet for account 0, internal/change branch (1), index 0
+const changeWallet0 = await createWalletFromPath(masterSeed, 0, 1, 0);
+console.log("Change Address 0:", changeWallet0.address);
+```
+
+#### C. Other Wallet Creation Options
+
+```javascript
+// Create a new random wallet
+const randomWallet = await createWallet();
+
+// Restore from an existing 32-byte (64 hex characters) seed
 const restoredWallet = await createWallet("YOUR_32_BYTE_HEX_SEED_HERE");
 
-// Create a brain wallet deterministically from ANY string
-const brainWallet = await createBrainWallet("user123:nonce1"); 
-console.log("Brain Wallet Address:", brainWallet.address);
+// Create a brain wallet deterministically from any string
+const brainWallet = await createBrainWallet("user123:passphrase");
 ```
 
 ### 2. Initialize the Client
@@ -55,7 +99,7 @@ const otherBalance = await client.balance("sikka1...");
 
 ### 4. Send Transactions (with automatic PoW)
 
-Sending transactions will automatically fetch the current PoW quote from the node, mine the required PoW locally in JavaScript, sign the transaction, and submit it to the node.
+Sending transactions automatically fetches the current PoW quote from the node, mines the required PoW locally in JavaScript, signs the transaction with ML-DSA-87, and submits it to the node.
 
 ```javascript
 try {
@@ -71,6 +115,9 @@ try {
 ```
 
 ## Features
-- **Browser & Node.js Compatible:** Uses standard `Uint8Array`, `DataView`, and `fetch`. No Node.js `Buffer` or `crypto` module dependencies.
-- **ML-DSA Signatures:** Built-in support for ML-DSA-87 signatures via `mldsa-wasm`.
-- **Automatic PoW:** Automatically mines the required Proof-of-Work for your transactions before submission.
+
+- **Full Wallet Suite:** Complete support for 12–24 word BIP-39 mnemonics, HD child wallet derivation (`account/branch/index`), raw seed restoration, and brain wallets.
+- **Protocol Compatible:** Fully aligned with Sikka node cryptographic specs (`bip39-hkdf-sha3-256-mldsa87-v1` and `bip39-hd-hkdf-sha3-256-mldsa87-v1`).
+- **Browser & Node.js Compatible:** Uses standard `Uint8Array`, `DataView`, `@noble/hashes`, and Web Cryptography. No Node.js `Buffer` or legacy dependencies.
+- **Post-Quantum Signatures:** Built-in support for NIST ML-DSA-87 signatures via `mldsa-wasm`.
+- **Automatic PoW:** Automatically mines the required Proof-of-Work for transactions before submission.

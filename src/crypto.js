@@ -1,11 +1,15 @@
 import { sha3_256 } from '@noble/hashes/sha3.js';
+import { hkdf } from '@noble/hashes/hkdf.js';
 import { encodeBech32m } from './bech32m.js';
 import mldsa from 'mldsa-wasm';
 import { hexToBytes, bytesToHex, stringToBytes, concatBytes } from './utils.js';
+import { mnemonicToSeedSync, normalizeMnemonic } from './bip39.js';
 
 const SIGNING_DOMAIN = "sikka:v2:txinput";
 const ADDRESS_VERSION = 1;
 const ADDRESS_HRP = "sikka";
+const DEFAULT_MNEMONIC_INFO = "sikka:mldsa87:bip39:v1";
+const DEFAULT_HD_INFO_PREFIX = "sikka:mldsa87:hd:v1";
 
 export async function createWallet(seedHex) {
   let seedBytes;
@@ -39,9 +43,6 @@ export async function createWallet(seedHex) {
 
   const address = encodeBech32m(ADDRESS_HRP, ADDRESS_VERSION, payloadHash);
 
-  // We return the privateKey handle, the hex, pubkey hex, and address.
-  // Note: the private key export format depends on mldsa-wasm. 
-  // We'll just return the seed as privKeyHex since that's enough to recreate it.
   const privKeyHex = bytesToHex(seedBytes);
 
   return { privateKey, privKeyHex, pubKeyHex, address };
@@ -52,6 +53,59 @@ export async function createBrainWallet(passphrase) {
   const seedHex = bytesToHex(hash);
   return await createWallet(seedHex);
 }
+
+export function seedFromMnemonic(mnemonic, passphrase = "") {
+  const bip39Seed = mnemonicToSeedSync(mnemonic, passphrase);
+  const infoBytes = stringToBytes(DEFAULT_MNEMONIC_INFO);
+  return hkdf(sha3_256, bip39Seed, undefined, infoBytes, 32);
+}
+
+export function derivePathSeed(masterSeed, account = 0, branch = 0, index = 0) {
+  let masterSeedBytes;
+  if (typeof masterSeed === 'string') {
+    masterSeedBytes = hexToBytes(masterSeed.trim());
+  } else if (masterSeed instanceof Uint8Array) {
+    masterSeedBytes = masterSeed;
+  } else {
+    throw new Error('Master seed must be a hex string or Uint8Array');
+  }
+
+  if (masterSeedBytes.length !== 32) {
+    throw new Error(`Master seed must be 32 bytes, got ${masterSeedBytes.length}`);
+  }
+
+  const prefixBytes = stringToBytes(DEFAULT_HD_INFO_PREFIX);
+  const pathBuf = new Uint8Array(12);
+  const view = new DataView(pathBuf.buffer);
+  view.setUint32(0, account, false);
+  view.setUint32(4, branch, false);
+  view.setUint32(8, index, false);
+  const infoBytes = concatBytes(prefixBytes, pathBuf);
+
+  return hkdf(sha3_256, masterSeedBytes, undefined, infoBytes, 32);
+}
+
+export async function createWalletFromMnemonic(mnemonic, passphrase = "") {
+  const seedBytes = seedFromMnemonic(mnemonic, passphrase);
+  const masterSeedHex = bytesToHex(seedBytes);
+  const wallet = await createWallet(masterSeedHex);
+  return {
+    ...wallet,
+    masterSeedHex,
+    mnemonic: normalizeMnemonic(mnemonic)
+  };
+}
+
+export async function createWalletFromPath(masterSeed, account = 0, branch = 0, index = 0) {
+  const childSeedBytes = derivePathSeed(masterSeed, account, branch, index);
+  const childSeedHex = bytesToHex(childSeedBytes);
+  const wallet = await createWallet(childSeedHex);
+  return {
+    ...wallet,
+    pathSeedHex: childSeedHex
+  };
+}
+
 
 export function computeTransactionIdBytes(transaction) {
   const buffers = [];
