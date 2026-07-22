@@ -1,25 +1,35 @@
 {
   "name": "sikka-sdk",
   "version": "0.0.1",
-  "description": "",
+  "description": "Lightweight, browser-compatible JavaScript SDK for Sikka crypto with ML-DSA-87 signatures, 24-word BIP-39 mnemonics, HD wallets, and automated PoW.",
   "main": "src/index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test.js"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sikkalabs/sikka-sdk.git"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "sikka",
+    "sdk",
+    "wallet",
+    "mldsa",
+    "mldsa-87",
+    "bip39",
+    "hd-wallet",
+    "post-quantum",
+    "cryptography"
+  ],
+  "author": "Sikka Labs",
   "license": "ISC",
-  "type": "module",
   "bugs": {
     "url": "https://github.com/sikkalabs/sikka-sdk/issues"
   },
   "homepage": "https://github.com/sikkalabs/sikka-sdk#readme",
   "dependencies": {
-    "@noble/hashes": "^2.2.0",
-    "mldsa-wasm": "^0.0.4"
+    "@noble/hashes": "2.2.0",
+    "mldsa-wasm": "0.0.4"
   }
 }
