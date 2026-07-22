@@ -1,123 +1,228 @@
-# Sikka JS SDK
+# ⚡ Sikka JavaScript & Browser SDK (`sikka-sdk`)
 
-A lightweight, browser-compatible JavaScript SDK for interacting with the Sikka node, creating wallets (BIP-39 mnemonics, HD child wallets, seed restoration, brain wallets), and sending transactions with built-in Proof-of-Work (PoW).
+A lightweight, zero-dependency, post-quantum JavaScript SDK for the **Sikka** blockchain network. Built for modern Web browsers and Node.js environments.
 
-## Installation
+Provides full wallet management, 24-word BIP-39 mnemonic seed phrases, Hierarchical Deterministic (HD) address derivation, NIST ML-DSA-87 signatures, and automated Proof-of-Work (PoW) transaction mining.
 
-To install the SDK directly from GitHub, run:
+---
+
+## 🌟 Key Features
+
+- **🛡️ Quantum-Resistant Cryptography**: Built-in support for **NIST ML-DSA-87** (Module-Lattice-Based Digital Signature Algorithm, FIPS 204) via WebAssembly (`mldsa-wasm`).
+- **🔑 Complete Wallet Suite**: 
+  - 12–24 word BIP-39 seed phrase generation & validation.
+  - Hierarchical Deterministic (HD) path derivation (`account / branch / index`).
+  - Raw 32-byte hex seed restoration.
+  - Deterministic brain wallet creation.
+- **⚡ Automatic Proof-of-Work (PoW)**: Automatically fetches difficulty quotes from the node, mines SHA3-256 PoW nonces locally, and broadcasts transactions seamlessly.
+- **🌐 100% Browser & Node.js Compatible**: Uses standard Web Cryptography, `Uint8Array`, `DataView`, and native `fetch`. Zero legacy Node.js dependencies (no `Buffer` or `crypto` module required).
+- **🕸️ DAG Network Integration**: Automatic UTXO selection, DAG parent tip resolution, and transaction submission.
+
+---
+
+## 📦 Installation
+
+Install directly via `npm`, `yarn`, `pnpm`, or `bun`:
 
 ```bash
 npm install sikkalabs/sikka-sdk
 ```
 
-## Usage
+---
 
-### 1. Create & Manage Wallets
+## 🚀 Quick Start (In 4 Simple Steps)
 
-The Sikka SDK supports full wallet management compatible with the Sikka Go node specification:
+### Step 1: Create a 24-Word Seed Wallet
+```javascript
+import { generateMnemonic, createWalletFromMnemonic } from 'sikka-sdk';
 
-#### A. Generate & Restore from 24-Word BIP-39 Seed Mnemonic
+// 1. Generate a new 24-word recovery phrase
+const mnemonic = generateMnemonic(256);
+console.log("Your 24-Word Seed Phrase:\n", mnemonic);
+
+// 2. Create your quantum-resistant wallet
+const wallet = await createWalletFromMnemonic(mnemonic);
+console.log("Your Sikka Address:", wallet.address);
+```
+
+### Step 2: Initialize the Client
+```javascript
+import { SikkaClient } from 'sikka-sdk';
+
+const client = new SikkaClient({
+  nodeURL: 'https://1.sikkalabs.com', // Default public node
+  wallet: wallet
+});
+```
+
+### Step 3: Check Your Balance
+```javascript
+// Amount is returned in "chillar" (1 Sikka = 1,000,000 chillar)
+const balance = await client.balance();
+console.log(`Current Balance: ${balance} chillar`);
+```
+
+### Step 4: Send Sikka (Automated PoW Mining & Signing)
+```javascript
+try {
+  const recipientAddress = "sikka1pxarypt7u0aaxr870s0fp286kth009867syxmx25jcctley5zv9mqve907y";
+  const amountToSend = 500000n; // 0.5 Sikka in chillar
+
+  console.log("Mining Proof-of-Work and sending transaction...");
+  const { txID, sentAmount } = await client.send(amountToSend, recipientAddress);
+  
+  console.log(`Successfully sent ${sentAmount} chillar! TxID: ${txID}`);
+} catch (error) {
+  console.error("Transaction failed:", error.message);
+}
+```
+
+---
+
+## 📖 Deep Dive: Wallet Management
+
+### 1. Generating & Restoring 24-Word Seed Phrases (BIP-39)
+
+The Sikka protocol uses BIP-39 mnemonic phrases (12 to 24 words) combined with `HKDF-SHA3-256` key derivation.
 
 ```javascript
 import { 
   generateMnemonic, 
   validateMnemonic, 
-  createWalletFromMnemonic,
-  createWalletFromPath,
-  seedFromMnemonic,
-  createWallet, 
-  createBrainWallet, 
-  SikkaClient 
+  createWalletFromMnemonic 
 } from 'sikka-sdk';
 
-// 1. Generate a new 24-word BIP-39 mnemonic (256 bits entropy)
+// Generate 256-bit entropy (24 words)
 const mnemonic = generateMnemonic(256);
-console.log("Mnemonic:", mnemonic);
 
-// 2. Validate mnemonic
+// Validate an incoming mnemonic phrase string
 if (validateMnemonic(mnemonic)) {
-  console.log("Mnemonic is valid!");
-}
+  // Create wallet from mnemonic with optional extra passphrase
+  const wallet = await createWalletFromMnemonic(mnemonic, "optional-user-passphrase");
 
-// 3. Create wallet from mnemonic (with optional passphrase)
-const wallet = await createWalletFromMnemonic(mnemonic, "optional-passphrase");
-console.log("Address:", wallet.address);
-console.log("Public Key:", wallet.pubKeyHex);
-console.log("Private Key / Seed Hex:", wallet.privKeyHex);
+  console.log("Address:", wallet.address);         // e.g. sikka1...
+  console.log("Public Key:", wallet.pubKeyHex);    // 2592 bytes hex
+  console.log("Private Seed:", wallet.privKeyHex); // 32 bytes hex
+}
 ```
 
-#### B. Hierarchical Deterministic (HD) Child Wallets
+---
 
-Derive deterministic child addresses following Sikka's HD derivation (`account / branch / index`):
+### 2. Hierarchical Deterministic (HD) Child Wallets
+
+Derive multiple deterministic child wallets from a single master seed using Sikka's HD derivation rule (`account / branch / index`):
+
+- **Branch `0`**: External / Receive addresses
+- **Branch `1`**: Internal / Change addresses
 
 ```javascript
-// 1. Derive master 32-byte ML-DSA-87 seed from mnemonic
+import { 
+  seedFromMnemonic, 
+  createWalletFromPath 
+} from 'sikka-sdk';
+
+// 1. Derive 32-byte master seed from mnemonic
 const masterSeed = seedFromMnemonic(mnemonic, "optional-passphrase");
 
-// 2. Derive HD child wallet for account 0, external branch (0), index 0
-const receiveWallet0 = await createWalletFromPath(masterSeed, 0, 0, 0);
-console.log("Receive Address 0:", receiveWallet0.address);
+// 2. Derive Receive Address 0 (account=0, branch=0, index=0)
+const receive0 = await createWalletFromPath(masterSeed, 0, 0, 0);
+console.log("Receive Address #0:", receive0.address);
 
-// 3. Derive HD child wallet for account 0, internal/change branch (1), index 0
-const changeWallet0 = await createWalletFromPath(masterSeed, 0, 1, 0);
-console.log("Change Address 0:", changeWallet0.address);
+// 3. Derive Receive Address 1 (account=0, branch=0, index=1)
+const receive1 = await createWalletFromPath(masterSeed, 0, 0, 1);
+console.log("Receive Address #1:", receive1.address);
+
+// 4. Derive Change Address 0 (account=0, branch=1, index=0)
+const change0 = await createWalletFromPath(masterSeed, 0, 1, 0);
+console.log("Change Address #0:", change0.address);
 ```
 
-#### C. Other Wallet Creation Options
+---
+
+### 3. Hex Seed Restoration & Brain Wallets
 
 ```javascript
-// Create a new random wallet
-const randomWallet = await createWallet();
+import { createWallet, createBrainWallet } from 'sikka-sdk';
 
-// Restore from an existing 32-byte (64 hex characters) seed
-const restoredWallet = await createWallet("YOUR_32_BYTE_HEX_SEED_HERE");
+// Restore directly from a 32-byte (64 hex characters) seed
+const restoredWallet = await createWallet("c279e8a75d507117...");
 
-// Create a brain wallet deterministically from any string
-const brainWallet = await createBrainWallet("user123:passphrase");
+// Create a deterministic brain wallet from any arbitrary passphrase
+const brainWallet = await createBrainWallet("username:secret-phrase-123");
+console.log("Brain Wallet Address:", brainWallet.address);
 ```
 
-### 2. Initialize the Client
+---
 
-Initialize the client with your Sikka node URL and wallet. The default node is `https://1.sikkalabs.com`.
+## 🔬 Sikka Cryptography & Architecture Explained
+
+### Post-Quantum Signatures (ML-DSA-87)
+Sikka replaces legacy ECDSA/Ed25519 signatures with **ML-DSA-87** (NIST FIPS 204), protecting funds against quantum computer attacks.
+- **Public Key Size**: 2,592 bytes
+- **Signature Size**: 4,627 bytes
+
+### Bech32m Address Format
+A Sikka address is a Bech32m commitment to a 1-of-1 threshold policy:
+$$\text{Address Payload} = \text{SHA3-256}( \texttt{0x01} \parallel \text{UTF8Bytes("mldsa87:1:[pubKeyHex]")} )$$
+Formatted as Bech32m with prefix `sikka` and version `1` (e.g., `sikka1...`).
+
+### How Proof-of-Work (PoW) Works
+Transactions require client-side Proof-of-Work to prevent network spam:
+1. `client.send(...)` fetches a PoW quote from the node (`/v1/tx/pow-quote`) returning target `required_bits` and DAG parent hashes.
+2. The SDK mines a `pow_nonce` locally in JavaScript until:
+   $$\text{LeadingZeroBits}(\text{SHA3-256}(\text{txID} \parallel \text{parentPow0} \parallel \text{parentPow1} \parallel \text{nonce})) \ge \text{required\_bits}$$
+3. The signed transaction with PoW headers is broadcast to `/v1/tx/submit`.
+
+---
+
+## 💡 Web Application Performance (Web Workers)
+
+When integrating `sikka-sdk` into Web Browser UIs (React, Vue, Svelte, Vanilla JS), heavy PoW mining can be offloaded to a **Web Worker** so the main UI thread never freezes.
 
 ```javascript
-const client = new SikkaClient({
-  nodeURL: 'https://1.sikkalabs.com',
-  wallet: wallet
-});
+// worker.js
+import { SikkaClient, createWalletFromMnemonic } from 'sikka-sdk';
+
+self.onmessage = async (e) => {
+  const { mnemonic, recipient, amount } = e.data;
+  const wallet = await createWalletFromMnemonic(mnemonic);
+  const client = new SikkaClient({ wallet });
+
+  const result = await client.send(amount, recipient);
+  self.postMessage({ success: true, result });
+};
 ```
 
-### 3. Check Balance
+---
+
+## 🛠️ API Reference
+
+### Core Functions
+
+| Exported Function | Return Type | Description |
+| :--- | :--- | :--- |
+| `generateMnemonic(entropyBits)` | `string` | Generates 12–24 word BIP-39 mnemonic (128, 160, 192, 224, 256 bits). Default `256`. |
+| `validateMnemonic(mnemonic)` | `boolean` | Checks word count, wordlist presence, and SHA-256 entropy checksum. |
+| `createWalletFromMnemonic(mnemonic, passphrase)` | `Promise<Wallet>` | Derives a full ML-DSA-87 wallet from a 24-word seed phrase. |
+| `createWalletFromPath(masterSeed, account, branch, index)` | `Promise<Wallet>` | Derives an HD child wallet for specified path indices. |
+| `seedFromMnemonic(mnemonic, passphrase)` | `Uint8Array` | Derives 32-byte ML-DSA-87 master seed using HKDF-SHA3-256. |
+| `derivePathSeed(masterSeed, account, branch, index)` | `Uint8Array` | Derives 32-byte child seed for HD path. |
+| `createWallet(seedHex?)` | `Promise<Wallet>` | Creates a wallet from a 32-byte hex seed or random entropy. |
+| `createBrainWallet(passphrase)` | `Promise<Wallet>` | Creates a wallet deterministically from any string. |
+| `validateAddress(address)` | `string` | Validates a `sikka1...` Bech32m address string. |
+
+### `SikkaClient` Class
 
 ```javascript
-const balance = await client.balance();
-console.log(`Balance: ${balance} chillar`);
-
-// You can also check the balance of any other address
-const otherBalance = await client.balance("sikka1...");
+const client = new SikkaClient({ nodeURL: 'https://1.sikkalabs.com', wallet });
 ```
 
-### 4. Send Transactions (with automatic PoW)
+- **`async balance(address?: string)`**: Queries balance in chillar for wallet or specified address.
+- **`async send(amount: bigint | number, recipientAddress: string)`**: Executes UTXO selection, requests PoW quote, mines PoW, signs inputs, and submits transaction. Returns `{ txID, sentAmount }`.
+- **`async pow(transaction, minimumBits)`**: Mines Proof-of-Work nonce directly on a transaction object.
 
-Sending transactions automatically fetches the current PoW quote from the node, mines the required PoW locally in JavaScript, signs the transaction with ML-DSA-87, and submits it to the node.
+---
 
-```javascript
-try {
-  // Amount is in chillar
-  const amountToSend = 500000n;
-  const recipient = "sikka1...";
-  
-  const { txID, sentAmount } = await client.send(amountToSend, recipient);
-  console.log(`Successfully sent ${sentAmount} chillar! TxID: ${txID}`);
-} catch (error) {
-  console.error("Failed to send transaction:", error);
-}
-```
+## 📜 License
 
-## Features
-
-- **Full Wallet Suite:** Complete support for 12–24 word BIP-39 mnemonics, HD child wallet derivation (`account/branch/index`), raw seed restoration, and brain wallets.
-- **Protocol Compatible:** Fully aligned with Sikka node cryptographic specs (`bip39-hkdf-sha3-256-mldsa87-v1` and `bip39-hd-hkdf-sha3-256-mldsa87-v1`).
-- **Browser & Node.js Compatible:** Uses standard `Uint8Array`, `DataView`, `@noble/hashes`, and Web Cryptography. No Node.js `Buffer` or legacy dependencies.
-- **Post-Quantum Signatures:** Built-in support for NIST ML-DSA-87 signatures via `mldsa-wasm`.
-- **Automatic PoW:** Automatically mines the required Proof-of-Work for transactions before submission.
+ISC License. Built by [Sikka Labs](https://github.com/sikkalabs).
