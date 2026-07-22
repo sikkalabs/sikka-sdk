@@ -114,11 +114,14 @@ async function runTests() {
   // ----------------------------------------------------
   // 5. SikkaHDWallet Manager Tests & Shorthands
   // ----------------------------------------------------
-  console.log("\n5. Testing SikkaHDWallet Smart Manager & Shorthands...");
+  console.log("\n5. Testing SikkaHDWallet Smart Manager & Path Parsing...");
   const hdWallet = await createHDWalletAlias({ mnemonic: vector1.mnemonic, gapLimit: 2 });
   
-  const hdReceive0 = await hdWallet.receiveAddress(0);
+  const hdReceive0 = await hdWallet.receiveAddress();           // Default index 0
+  const hdReceive1 = await hdWallet.receiveAddress(1);          // Index 1
+  const hdPathStr  = await hdWallet.receiveAddress("m/0/0/1");  // Full path string "m/0/0/1"
   const hdChange0  = await hdWallet.changeAddress(0);
+  const hdPathAddr = await hdWallet.address("m/0/1/0");          // Direct address method "m/0/1/0"
   const nextUnused = await hdWallet.newAddress();
   const totalBal   = await hdWallet.balance();
 
@@ -130,10 +133,13 @@ async function runTests() {
   if (hdReceive0 !== receive0.address) {
     throw new Error(`SikkaHDWallet Receive Address mismatch! Expected ${receive0.address}, got ${hdReceive0}`);
   }
-  if (hdChange0 !== change0.address) {
+  if (hdReceive1 !== receive1.address || hdPathStr !== receive1.address) {
+    throw new Error(`SikkaHDWallet Path String mismatch! Expected ${receive1.address}, got ${hdPathStr}`);
+  }
+  if (hdChange0 !== change0.address || hdPathAddr !== change0.address) {
     throw new Error(`SikkaHDWallet Change Address mismatch! Expected ${change0.address}, got ${hdChange0}`);
   }
-  console.log("   SikkaHDWallet Manager & Shorthands: PASSED ✓");
+  console.log("   SikkaHDWallet Manager & Path Parsing: PASSED ✓");
 
   // ----------------------------------------------------
   // 6. Live Network Integration Test (Optional)

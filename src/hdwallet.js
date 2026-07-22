@@ -43,6 +43,31 @@ export class SikkaHDWallet {
     this.pathCache = new Map();
   }
 
+  parsePath(pathOrIndex = 0, branch = 0, index = 0) {
+    if (typeof pathOrIndex === 'string') {
+      const clean = pathOrIndex.replace(/^m\//i, '').trim();
+      const parts = clean.split('/').map(p => parseInt(p, 10));
+      if (parts.some(isNaN)) {
+        throw new Error(`Invalid HD path string: "${pathOrIndex}"`);
+      }
+      if (parts.length === 1) return { account: 0, branch: 0, index: parts[0] };
+      if (parts.length === 2) return { account: 0, branch: parts[0], index: parts[1] };
+      return { account: parts[0], branch: parts[1], index: parts[2] };
+    }
+    if (typeof pathOrIndex === 'object' && pathOrIndex !== null) {
+      return {
+        account: pathOrIndex.account ?? 0,
+        branch: pathOrIndex.branch ?? 0,
+        index: pathOrIndex.index ?? 0
+      };
+    }
+    return {
+      account: Number(pathOrIndex || 0),
+      branch: Number(branch || 0),
+      index: Number(index || 0)
+    };
+  }
+
   async getWalletForPath(account = 0, branch = 0, index = 0) {
     const key = `${account}:${branch}:${index}`;
     if (this.pathCache.has(key)) {
@@ -65,23 +90,39 @@ export class SikkaHDWallet {
     return walletObj;
   }
 
-  async getReceiveAddress(index = 0) {
-    const wallet = await this.getWalletForPath(0, 0, index);
+  async getReceiveAddress(pathOrIndex = 0) {
+    if (typeof pathOrIndex === 'string' || typeof pathOrIndex === 'object') {
+      const { account, branch, index } = this.parsePath(pathOrIndex);
+      const wallet = await this.getWalletForPath(account, branch, index);
+      return wallet.address;
+    }
+    const wallet = await this.getWalletForPath(0, 0, Number(pathOrIndex || 0));
     return wallet.address;
   }
 
-  async getChangeAddress(index = 0) {
-    const wallet = await this.getWalletForPath(0, 1, index);
+  async getChangeAddress(pathOrIndex = 0) {
+    if (typeof pathOrIndex === 'string' || typeof pathOrIndex === 'object') {
+      const { account, branch, index } = this.parsePath(pathOrIndex);
+      const wallet = await this.getWalletForPath(account, branch, index);
+      return wallet.address;
+    }
+    const wallet = await this.getWalletForPath(0, 1, Number(pathOrIndex || 0));
     return wallet.address;
   }
 
-  // Shorthand aliases
-  async receiveAddress(index = 0) {
-    return await this.getReceiveAddress(index);
+  // Shorthand aliases & Flexible Address Deriver
+  async address(pathOrIndex = 0, branch = 0, index = 0) {
+    const p = this.parsePath(pathOrIndex, branch, index);
+    const wallet = await this.getWalletForPath(p.account, p.branch, p.index);
+    return wallet.address;
   }
 
-  async changeAddress(index = 0) {
-    return await this.getChangeAddress(index);
+  async receiveAddress(pathOrIndex = 0) {
+    return await this.getReceiveAddress(pathOrIndex);
+  }
+
+  async changeAddress(pathOrIndex = 0) {
+    return await this.getChangeAddress(pathOrIndex);
   }
 
   async scanAddresses() {
