@@ -1,5 +1,5 @@
-export const CHILLAR_PER_SIKKA = 1_000_000n;
-export const SIKKA_DECIMALS = 6;
+export const CHILLAR_PER_SIKKA = 10_000_000_000n;
+export const SIKKA_DECIMALS = 10;
 
 export function sikkaToChillar(sikka) {
   if (typeof sikka === 'bigint') {

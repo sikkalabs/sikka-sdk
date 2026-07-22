@@ -35,18 +35,18 @@ async function runTests() {
   // 2. Unit Conversion Tests (Sikka <-> Chillar)
   // ----------------------------------------------------
   console.log("\n2. Testing Unit Conversions (Sikka <-> Chillar)...");
-  if (sikkaToChillar("1") !== 1_000_000n) throw new Error("sikkaToChillar('1') failed");
-  if (sikkaToChillar("1.5") !== 1_500_000n) throw new Error("sikkaToChillar('1.5') failed");
-  if (sikkaToChillar("0.000001") !== 1n) throw new Error("sikkaToChillar('0.000001') failed");
+  if (sikkaToChillar("1") !== 10_000_000_000n) throw new Error("sikkaToChillar('1') failed");
+  if (sikkaToChillar("1.5") !== 15_000_000_000n) throw new Error("sikkaToChillar('1.5') failed");
+  if (sikkaToChillar("0.0000000001") !== 1n) throw new Error("sikkaToChillar('0.0000000001') failed");
   
-  if (chillarToSikka(1_000_000n) !== "1") throw new Error("chillarToSikka(1000000n) failed");
-  if (chillarToSikka(1_500_000n) !== "1.5") throw new Error("chillarToSikka(1500000n) failed");
-  if (chillarToSikka(1n) !== "0.000001") throw new Error("chillarToSikka(1n) failed");
+  if (chillarToSikka(10_000_000_000n) !== "1") throw new Error("chillarToSikka(10000000000n) failed");
+  if (chillarToSikka(15_000_000_000n) !== "1.5") throw new Error("chillarToSikka(15000000000n) failed");
+  if (chillarToSikka(1n) !== "0.0000000001") throw new Error("chillarToSikka(1n) failed");
   if (chillarToSikka(0n) !== "0") throw new Error("chillarToSikka(0n) failed");
 
-  console.log("   1 Sikka     = ", sikkaToChillar("1").toString(), "chillar");
-  console.log("   1.5 Sikka   = ", sikkaToChillar("1.5").toString(), "chillar");
-  console.log("   1 chillar   = ", chillarToSikka(1n), "Sikka");
+  console.log("   1 Sikka        = ", sikkaToChillar("1").toString(), "chillar");
+  console.log("   1.5 Sikka      = ", sikkaToChillar("1.5").toString(), "chillar");
+  console.log("   1 chillar      = ", chillarToSikka(1n), "Sikka");
   console.log("   Unit Conversions: PASSED ✓");
 
   // ----------------------------------------------------
